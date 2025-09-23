@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Penjana OPR - SK Inanam II</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+      /* Rule for PDF generation and direct printing */
+      @page {
+        size: A4 portrait;
+        margin: 1cm; /* Set margins for the printed page */
+      }
+
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          margin: 0;
+          padding: 0;
+          background: none; /* Remove background for printing */
+        }
+        
+        .no-print {
+          display: none !important;
+        }
+
+        /* Override layout styles for printing */
+        main.container {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+        .lg\:grid-cols-2 {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* Style the report itself for printing */
+        .print-area {
+          margin: 0;
+          border: none !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          width: 100%; /* Fill the page content area defined by @page */
+        }
+
+        /* Remove abstract background for printing */
+        #onepagereport {
+            background-image: none !important;
+            background-color: #ffffff !important;
+        }
+      }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-cyan-50 to-blue-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState } = React;
+
+      const translations = {
+        bm: {
+            // Header & Language Switcher
+            appTitle: 'Penjana OPR (One Page Report)',
+            schoolName: 'Sekolah Kebangsaan Inanam II, Kota Kinabalu',
+            switchTo: 'English',
+
+            // Footer
+            footerText: '© {year} SK Inanam II. Dibangunkan untuk kegunaan dalaman.',
+            
+            // Theme Selector
+            selectTheme: 'Pilih Tema Laporan',
+            
+            // Report Form
+            formTitle: 'Masukkan Butiran Laporan',
+            programName: 'Nama Program',
+            programNamePlaceholder: 'Masukkan nama program',
+            organizedBy: 'Anjuran',
+            organizedByPlaceholder: 'Masukkan penganjur',
+            dateTime: 'Tarikh & Masa',
+            dateTimePlaceholder: 'cth: 15 Julai 2024, 8:00 AM',
+            venue: 'Tempat',
+            venuePlaceholder: 'Masukkan tempat program',
+            participants: 'Bilangan Peserta / Kumpulan Sasaran',
+            participantsPlaceholder: 'cth: 50 orang murid Tahun 6',
+            objectives: 'Objektif Program',
+            objectivesPlaceholder: 'Masukkan setiap objektif pada baris baru.',
+            activities: 'Aktiviti / Pengisian Program',
+            activitiesPlaceholder: 'Senaraikan aktiviti yang dijalankan.',
+            strengths: 'Kekuatan Program',
+            strengthsPlaceholder: 'Masukkan kekuatan program',
+            weaknesses: 'Kelemahan Program',
+            weaknessesPlaceholder: 'Masukkan kelemahan program',
+            improvements: 'Cadangan Penambahbaikan',
+            improvementsPlaceholder: 'Masukkan cadangan penambahbaikan',
+            
+            // Image Upload
+            imageAttachments: 'Lampiran Gambar',
+            uploadImages: 'Muat Naik Gambar (Maksimum 4 keping)',
+            processingImages: 'Memproses imej...',
+            
+            // Confirmation Details
+            confirmationDetails: 'Butiran Pengesahan',
+            preparedBy: 'Disediakan oleh (Nama)',
+            preparedByPlaceholder: 'Nama Penuh Huruf Besar',
+            preparerPosition: 'Jawatan Penyedia',
+            preparerPositionPlaceholder: 'cth: Guru Penasihat',
+            verifiedBy: 'Disahkan oleh (Nama)',
+            verifiedByPlaceholder: 'Nama Penuh Huruf Besar',
+            verifierPosition: 'Jawatan Pengesah',
+            verifierPositionPlaceholder: 'cth: Guru Besar, SK Inanam II',
+
+            // Report Preview
+            reportTitle: 'ONE PAGE REPORT',
+            noInfo: 'Tiada maklumat',
+            noImages: 'Tiada gambar dimuat naik',
+            preparedByLabel: 'Disediakan oleh,',
+            verifiedByLabel: 'Disahkan oleh,',
+            downloadPdf: 'Muat Turun PDF',
+            printReport: 'Cetak Laporan',
+            
+            // Alerts
+            max4Images: 'Anda hanya boleh memuat naik maksimum 4 keping gambar.',
+            imageProcessFail: 'Gagal memproses imej. Sila cuba fail lain.',
+            reportNotFound: 'Laporan tidak dijumpai.',
+            allowPopups: "Sila benarkan 'popup' dalam pelayar anda untuk membuka PDF.",
+            generatingPdf: 'Menjana PDF, sila tunggu...',
+            pdfFailCloseWindow: 'Gagal menjana PDF. Sila tutup tetingkap ini dan cuba lagi.',
+            pdfFailTryAgain: 'Gagal menjana PDF. Sila cuba lagi.',
+        },
+        en: {
+            // Header & Language Switcher
+            appTitle: 'OPR (One Page Report) Generator',
+            schoolName: 'Sekolah Kebangsaan Inanam II, Kota Kinabalu',
+            switchTo: 'Bahasa Melayu',
+            
+            // Footer
+            footerText: '© {year} SK Inanam II. Developed for internal use.',
+            
+            // Theme Selector
+            selectTheme: 'Select Report Theme',
+            
+            // Report Form
+            formTitle: 'Enter Report Details',
+            programName: 'Program Name',
+            programNamePlaceholder: 'Enter program name',
+            organizedBy: 'Organized By',
+            organizedByPlaceholder: 'Enter the organizer',
+            dateTime: 'Date & Time',
+            dateTimePlaceholder: 'e.g., 15 July 2024, 8:00 AM',
+            venue: 'Venue',
+            venuePlaceholder: 'Enter program venue',
+            participants: 'Number of Participants / Target Group',
+            participantsPlaceholder: 'e.g., 50 Year 6 students',
+            objectives: 'Program Objectives',
+            objectivesPlaceholder: 'Enter each objective on a new line.',
+            activities: 'Activities / Program Content',
+            activitiesPlaceholder: 'List the activities carried out.',
+            strengths: 'Program Strengths',
+            strengthsPlaceholder: 'Enter program strengths',
+            weaknesses: 'Program Weaknesses',
+            weaknessesPlaceholder: 'Enter program weaknesses',
+            improvements: 'Suggestions for Improvement',
+            improvementsPlaceholder: 'Enter suggestions for improvement',
+
+            // Image Upload
+            imageAttachments: 'Image Attachments',
+            uploadImages: 'Upload Images (Maximum 4 pieces)',
+            processingImages: 'Processing images...',
+
+            // Confirmation Details
+            confirmationDetails: 'Confirmation Details',
+            preparedBy: 'Prepared by (Name)',
+            preparedByPlaceholder: 'Full Name in Uppercase',
+            preparerPosition: "Preparer's Position",
+            preparerPositionPlaceholder: 'e.g., Advisor Teacher',
+            verifiedBy: 'Verified by (Name)',
+            verifiedByPlaceholder: 'Full Name in Uppercase',
+            verifierPosition: "Verifier's Position",
+            verifierPositionPlaceholder: 'e.g., Headmaster, SK Inanam II',
+
+            // Report Preview
+            reportTitle: 'ONE PAGE REPORT',
+            noInfo: 'No information',
+            noImages: 'No images uploaded',
+            preparedByLabel: 'Prepared by,',
+            verifiedByLabel: 'Verified by,',
+            downloadPdf: 'Download PDF',
+            printReport: 'Print Report',
+            
+            // Alerts
+            max4Images: 'You can only upload a maximum of 4 images.',
+            imageProcessFail: 'Failed to process images. Please try other files.',
+            reportNotFound: 'Report not found.',
+            allowPopups: 'Please allow pop-ups in your browser to open the PDF.',
+            generatingPdf: 'Generating PDF, please wait...',
+            pdfFailCloseWindow: 'Failed to generate PDF. Please close this window and try again.',
+            pdfFailTryAgain: 'Failed to generate PDF. Please try again.',
+        }
+      };
+      
+      const themes = {
+        warmEarth: {
+          name: { bm: 'Tanah Hangat', en: 'Warm Earth' },
+          headerBgClass: 'bg-stone-200/70',
+          headerTextClass: 'text-stone-700',
+          bgColor: '#fef9f4',
+          backgroundGradient: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3e%3crect fill='%23fef9f4' width='40' height='40'/%3e%3cpath d='M0 20 L20 0 M20 40 L40 20' stroke-width='1' stroke='rgba(210,180,140,0.5)'/%3e%3cpath d='M20 0 L40 20 M0 20 L20 40' stroke-width='1' stroke='rgba(0,128,128,0.3)'/%3e%3c/svg%3e")`,
+          contentBgClass: 'bg-white/80',
+          bodyTextClass: 'text-slate-800',
+          borderColorClass: 'border-slate-300',
+          mainHeaderBorderClass: 'border-black',
+          signatureLineClass: 'border-black',
+        },
+        corporateBlue: {
+          name: { bm: 'Biru Korporat', en: 'Corporate Blue' },
+          headerBgClass: 'bg-blue-200/60',
+          headerTextClass: 'text-blue-800',
+          bgColor: '#f0f8ff',
+          backgroundGradient: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3e%3crect fill='%23f0f8ff' width='20' height='20'/%3e%3cpath d='M10 0 V20 M0 10 H20' stroke-width='0.5' stroke='rgba(70,130,180,0.3)'/%3e%3c/svg%3e")`,
+          contentBgClass: 'bg-white/80',
+          bodyTextClass: 'text-slate-800',
+          borderColorClass: 'border-slate-300',
+          mainHeaderBorderClass: 'border-black',
+          signatureLineClass: 'border-black',
+        },
+        naturalGreen: {
+          name: { bm: 'Hijau Semulajadi', en: 'Natural Green' },
+          headerBgClass: 'bg-emerald-200/60',
+          headerTextClass: 'text-emerald-800',
+          bgColor: '#fafff5',
+          backgroundGradient: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3e%3crect fill='%23fafff5' width='40' height='40'/%3e%3cpath d='M0 10 C10 0, 30 0, 40 10 S30 20, 20 20 10 20, 0 10 Z' fill='rgba(144, 238, 144, 0.3)'/%3e%3cpath d='M0 30 C10 20, 30 20, 40 30 S30 40, 20 40 10 40, 0 30 Z' fill='rgba(60, 179, 113, 0.2)'/%3e%3c/svg%3e")`,
+          contentBgClass: 'bg-white/80',
+          bodyTextClass: 'text-slate-800',
+          borderColorClass: 'border-slate-300',
+          mainHeaderBorderClass: 'border-black',
+          signatureLineClass: 'border-black',
+        },
+        creativePurple: {
+          name: { bm: 'Ungu Kreatif', en: 'Creative Purple' },
+          headerBgClass: 'bg-purple-200/60',
+          headerTextClass: 'text-purple-800',
+          bgColor: '#fcf5ff',
+          backgroundGradient: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3e%3crect fill='%23fcf5ff' width='60' height='60'/%3e%3ccircle cx='10' cy='10' r='15' fill='rgba(218, 112, 214, 0.2)'/%3e%3ccircle cx='45' cy='45' r='20' fill='rgba(147, 112, 219, 0.15)'/%3e%3ccircle cx='50' cy='15' r='10' fill='rgba(218, 112, 214, 0.15)'/%3e%3ccircle cx='15' cy='50' r='12' fill='rgba(147, 112, 219, 0.2)'/%3e%3c/svg%3e")`,
+          contentBgClass: 'bg-white/80',
+          bodyTextClass: 'text-slate-800',
+          borderColorClass: 'border-slate-300',
+          mainHeaderBorderClass: 'border-black',
+          signatureLineClass: 'border-black',
+        },
+      };
+
+      // Helper Components
+      const InputField = ({ label, name, value, onChange, type = 'text', placeholder }) => (
+        <div>
+          <label htmlFor={name} className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <input
+            type={type}
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition"
+          />
+        </div>
+      );
+
+      const TextAreaField = ({ label, name, value, onChange, rows = 3, placeholder }) => (
+        <div>
+          <label htmlFor={name} className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <textarea
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            rows={rows}
+            placeholder={placeholder}
+            className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition"
+          />
+        </div>
+      );
+      
+      const Header = ({ t, language, setLanguage }) => {
+        const toggleLanguage = () => {
+          setLanguage(lang => lang === 'bm' ? 'en' : 'bm');
+        };
+
+        return (
+          <header className="bg-cyan-700 text-white p-4 shadow-md no-print">
+            <div className="container mx-auto flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <img 
+                  src="https://i.postimg.cc/7YWhQjDx/304906316-761303481981753-2113930729330281080-n.jpg" 
+                  alt="Logo SK Inanam II" 
+                  className="h-12 w-12 rounded-full bg-white p-1"
+                />
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">{t('appTitle')}</h1>
+                    <p className="text-cyan-200">{t('schoolName')}</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleLanguage}
+                className="bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+              >
+                {t('switchTo')}
+              </button>
+            </div>
+          </header>
+        );
+      };
+
+      const Footer = ({ t }) => (
+        <footer className="text-center p-4 text-slate-500 text-sm mt-8 no-print">
+          <p>{t('footerText').replace('{year}', new Date().getFullYear())}</p>
+        </footer>
+      );
+
+      const ThemeSelector = ({ activeTheme, setActiveTheme, t, language }) => (
+        <div className="bg-white p-4 rounded-lg shadow-lg mb-8">
+            <h3 className="text-lg font-bold text-cyan-800 mb-3">{t('selectTheme')}</h3>
+            <div className="flex flex-wrap gap-3">
+                {Object.entries(themes).map(([key, theme]) => (
+                    <button
+                        key={key}
+                        onClick={() => setActiveTheme(key)}
+                        className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
+                            activeTheme === key
+                                ? 'bg-cyan-600 text-white shadow-md ring-2 ring-offset-2 ring-cyan-500'
+                                : 'bg-slate-100 text-slate-700 hover:bg-cyan-100'
+                        }`}
+                    >
+                        {theme.name[language]}
+                    </button>
+                ))}
+            </div>
+        </div>
+      );
+      
+      const ReportForm = ({ reportData, setReportData, images, handleImageChange, imageLoading, t }) => {
+        const handleChange = (e) => {
+          const { name, value } = e.target;
+          setReportData(prevData => ({
+            ...prevData,
+            [name]: value,
+          }));
+        };
+
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-lg space-y-6">
+            <h2 className="text-xl font-bold text-cyan-800 border-b-2 border-cyan-100 pb-2">{t('formTitle')}</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InputField label={t('programName')} name="namaProgram" value={reportData.namaProgram} onChange={handleChange} placeholder={t('programNamePlaceholder')} />
+              <InputField label={t('organizedBy')} name="anjuran" value={reportData.anjuran} onChange={handleChange} placeholder={t('organizedByPlaceholder')} />
+              <InputField label={t('dateTime')} name="tarikhMasa" value={reportData.tarikhMasa} onChange={handleChange} placeholder={t('dateTimePlaceholder')} />
+              <InputField label={t('venue')} name="tempat" value={reportData.tempat} onChange={handleChange} placeholder={t('venuePlaceholder')} />
+            </div>
+
+            <InputField label={t('participants')} name="sasaran" value={reportData.sasaran} onChange={handleChange} placeholder={t('participantsPlaceholder')} />
+            
+            <TextAreaField label={t('objectives')} name="objektif" value={reportData.objektif} onChange={handleChange} rows={4} placeholder={t('objectivesPlaceholder')} />
+            <TextAreaField label={t('activities')} name="aktiviti" value={reportData.aktiviti} onChange={handleChange} rows={4} placeholder={t('activitiesPlaceholder')} />
+            <TextAreaField label={t('strengths')} name="kekuatan" value={reportData.kekuatan} onChange={handleChange} rows={3} placeholder={t('strengthsPlaceholder')} />
+            <TextAreaField label={t('weaknesses')} name="kelemahan" value={reportData.kelemahan} onChange={handleChange} rows={3} placeholder={t('weaknessesPlaceholder')} />
+            <TextAreaField label={t('improvements')} name="penambahbaikan" value={reportData.penambahbaikan} onChange={handleChange} rows={3} placeholder={t('improvementsPlaceholder')} />
+
+            <div className="border-t pt-6 space-y-4">
+                <h3 className="text-lg font-semibold text-cyan-800">{t('imageAttachments')}</h3>
+                <div>
+                    <label htmlFor="image-upload" className="block text-sm font-medium text-slate-700 mb-1">
+                        {t('uploadImages')}
+                    </label>
+                    <input
+                        type="file"
+                        id="image-upload"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                    />
+                </div>
+                
+                {imageLoading && (
+                    <div className="flex items-center text-sm text-cyan-600 p-2 bg-cyan-50 rounded-md">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t('processingImages')}
+                    </div>
+                )}
+
+                {!imageLoading && images.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {images.map((imgSrc, index) => (
+                            <img key={index} src={imgSrc} alt={`Preview ${index + 1}`} className="w-full h-20 object-cover rounded-md border-2 border-slate-200" />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="border-t pt-6 space-y-4">
+              <h3 className="text-lg font-semibold text-cyan-800">{t('confirmationDetails')}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputField label={t('preparedBy')} name="disediakanOleh" value={reportData.disediakanOleh} onChange={handleChange} placeholder={t('preparedByPlaceholder')}/>
+                  <InputField label={t('preparerPosition')} name="jawatanPenyedia" value={reportData.jawatanPenyedia} onChange={handleChange} placeholder={t('preparerPositionPlaceholder')}/>
+                  <InputField label={t('verifiedBy')} name="disahkanOleh" value={reportData.disahkanOleh} onChange={handleChange} placeholder={t('verifiedByPlaceholder')}/>
+                  <InputField label={t('verifierPosition')} name="jawatanPengesah" value={reportData.jawatanPengesah} onChange={handleChange} placeholder={t('verifierPositionPlaceholder')}/>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const ReportPreview = ({ reportData, images, handleDownloadPdf, activeTheme, t }) => {
+        const theme = themes[activeTheme];
+
+        const ReportSection = ({ title, children }) => (
+          <div className={`border-b ${theme.borderColorClass} last:border-b-0`}>
+            <h3 className={`font-bold ${theme.headerBgClass} px-3 py-1.5 text-sm uppercase tracking-wider ${theme.headerTextClass}`}>{title}</h3>
+            <div className="px-3 py-2 text-sm whitespace-pre-line leading-relaxed">{children}</div>
+          </div>
+        );
+        
+        const PDFIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+        );
+
+        const PrintIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+        );
+
+        const noInfoSpan = <span className="text-slate-400 italic">{t('noInfo')}</span>;
+
+        return (
+          <div>
+            <div 
+              id="onepagereport" 
+              className={`print-area p-8 rounded-lg shadow-lg border ${theme.borderColorClass} ${theme.bodyTextClass}`}
+              style={{
+                backgroundColor: theme.bgColor,
+                backgroundImage: theme.backgroundGradient,
+                transition: 'background-color 0.5s ease, background-image 0.5s ease',
+              }}
+            >
+              <header className={`flex justify-between items-center mb-8 pb-4 border-b-4 ${theme.mainHeaderBorderClass}`}>
+                <img 
+                  src="https://i.postimg.cc/7YWhQjDx/304906316-761303481981753-2113930729330281080-n.jpg" 
+                  alt="Logo SK Inanam II" 
+                  className="h-24 w-24 bg-white rounded-md p-1" 
+                />
+                <div className="text-center px-4">
+                    <h1 className="text-xl font-bold uppercase">{t('reportTitle')}</h1>
+                    <h2 className="text-lg font-semibold">{t('schoolName')}</h2>
+                </div>
+                <div className="h-24 w-24"></div> {/* Spacer to keep title centered */}
+              </header>
+
+              <main className={`space-y-0 border ${theme.borderColorClass} ${theme.contentBgClass} backdrop-blur-sm`}>
+                <ReportSection title={`1. ${t('programName')}`}>{reportData.namaProgram || noInfoSpan}</ReportSection>
+                <ReportSection title={`2. ${t('organizedBy')}`}>{reportData.anjuran || noInfoSpan}</ReportSection>
+                
+                <div className={`grid grid-cols-2 border-b ${theme.borderColorClass}`}>
+                    <div className={`border-r ${theme.borderColorClass}`}>
+                        <ReportSection title={`3. ${t('dateTime')}`}>{reportData.tarikhMasa || noInfoSpan}</ReportSection>
+                    </div>
+                    <div>
+                         <ReportSection title={`4. ${t('venue')}`}>{reportData.tempat || noInfoSpan}</ReportSection>
+                    </div>
+                </div>
+                
+                <ReportSection title={`5. ${t('participants')}`}>{reportData.sasaran || noInfoSpan}</ReportSection>
+                <ReportSection title={`6. ${t('objectives')}`}>{reportData.objektif || noInfoSpan}</ReportSection>
+                <ReportSection title={`7. ${t('activities')}`}>{reportData.aktiviti || noInfoSpan}</ReportSection>
+                <ReportSection title={`8. ${t('strengths')}`}>{reportData.kekuatan || noInfoSpan}</ReportSection>
+                <ReportSection title={`9. ${t('weaknesses')}`}>{reportData.kelemahan || noInfoSpan}</ReportSection>
+                <ReportSection title={`10. ${t('improvements')}`}>{reportData.penambahbaikan || noInfoSpan}</ReportSection>
+                <ReportSection title={`11. ${t('imageAttachments')}`}>
+                    {images.length > 0 ? (
+                        <div className="p-3">
+                            <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                                {images.map((imgSrc, index) => (
+                                    <div key={index} className="relative w-full bg-slate-100 rounded-sm overflow-hidden" style={{ paddingTop: '75%' /* 4:3 Aspect Ratio */ }}>
+                                        <img 
+                                            src={imgSrc} 
+                                            alt={`Lampiran ${index + 1}`} 
+                                            className={`absolute top-0 left-0 w-full h-full object-cover border-2 ${theme.mainHeaderBorderClass}`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="px-3 py-2 text-sm">
+                           <span className="text-slate-400 italic">{t('noImages')}</span>
+                        </div>
+                    )}
+                </ReportSection>
+              </main>
+
+              <footer className="mt-12 grid grid-cols-2 gap-8 text-sm">
+                <div>
+                  <p>{t('preparedByLabel')}</p>
+                  <div className="h-20"></div>
+                  <p className={`font-bold mt-1 border-t pt-1 ${theme.signatureLineClass}`}>({reportData.disediakanOleh || ' '.repeat(30)})</p>
+                  <p>{reportData.jawatanPenyedia}</p>
+                </div>
+                <div>
+                  <p>{t('verifiedByLabel')}</p>
+                  <div className="h-20"></div>
+                  <p className={`font-bold mt-1 border-t pt-1 ${theme.signatureLineClass}`}>({reportData.disahkanOleh || ' '.repeat(30)})</p>
+                  <p>{reportData.jawatanPengesah}</p>
+                </div>
+              </footer>
+            </div>
+            
+            <div className="mt-6 flex items-center justify-center gap-4 no-print">
+              <button 
+                onClick={handleDownloadPdf}
+                className="bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-colors duration-300 flex items-center justify-center text-lg shadow-lg"
+              >
+                <PDFIcon />
+                {t('downloadPdf')}
+              </button>
+              <button 
+                onClick={() => window.print()}
+                className="bg-teal-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors duration-300 flex items-center justify-center text-lg shadow-lg"
+              >
+                <PrintIcon />
+                {t('printReport')}
+              </button>
+            </div>
+          </div>
+        );
+      };
+
+      // Main App Component
+      const App = () => {
+        const [language, setLanguage] = useState('bm'); // 'bm' or 'en'
+        
+        const t = (key) => translations[language][key] || key;
+
+        const [reportData, setReportData] = useState({
+          namaProgram: 'Program Kecemerlangan Akademik Fasa 1',
+          anjuran: 'Panitia Matematik & Panitia Sains SK Inanam II',
+          tarikhMasa: '15 Julai 2024 (Isnin), 8:00 AM - 1:00 PM',
+          tempat: 'Dewan Terbuka SK Inanam II',
+          sasaran: '50 orang murid Tahun 6',
+          objektif: '1. Meningkatkan pemahaman murid dalam subjek kritikal.\n2. Memberi pendedahan tentang teknik menjawab soalan peperiksaan.\n3. Memupuk semangat kerjasama dan motivasi dalam kalangan murid.',
+          aktiviti: '1. Slot 1: Ceramah Teknik Menjawab Matematik\n2. Slot 2: Bengkel Sains\n3. Slot 3: Latihan dalam Kumpulan (LDK)',
+          kekuatan: '1. Penceramah yang berpengalaman dan berkaliber.\n2. Modul yang disediakan sangat relevan dan mudah difahami.\n3. Penglibatan aktif daripada semua peserta.',
+          kelemahan: '1. Tempoh masa bagi setiap slot agak terhad.\n2. Masalah teknikal pada sistem siaraya di awal program.',
+          penambahbaikan: '1. Memanjangkan tempoh program pada masa akan datang.\n2. Membuat pemeriksaan teknikal lebih awal sebelum program bermula.',
+          disediakanOleh: 'PN. SITI AISHAH BINTI AHMAD',
+          disahkanOleh: 'EN. ISMAIL BIN JUSOH',
+          jawatanPenyedia: 'Guru Penasihat',
+          jawatanPengesah: 'Guru Besar, SK Inanam II',
+        });
+        
+        const [images, setImages] = useState([]);
+        const [activeTheme, setActiveTheme] = useState('warmEarth');
+        const [imageLoading, setImageLoading] = useState(false);
+
+        const handleImageChange = (e) => {
+            const files = Array.from(e.target.files).slice(0, 4);
+
+            if (e.target.files.length > 4) {
+                alert(t('max4Images'));
+            }
+
+            if (files.length === 0) {
+                setImages([]);
+                return;
+            }
+            
+            setImageLoading(true);
+
+            const imagePromises = files.map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            Promise.all(imagePromises)
+                .then(base64Images => {
+                    setImages(base64Images);
+                })
+                .catch(error => {
+                    console.error('Error reading files:', error);
+                    alert(t('imageProcessFail'));
+                })
+                .finally(() => {
+                    setImageLoading(false);
+                });
+        };
+        
+        const handleDownloadPdf = async () => {
+          const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const reportElement = document.getElementById('onepagereport');
+          if (!reportElement) return alert(t('reportNotFound'));
+          
+          const fileName = `OPR_${reportData.namaProgram.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+
+          const generatePdfContent = async () => {
+            const clone = reportElement.cloneNode(true);
+
+            // Apply PDF-specific styles to the clone
+            const sections = Array.from(clone.querySelectorAll('h3'));
+            const lampiranHeader = sections.find(h3 => h3.textContent.includes('11.'));
+
+            if (lampiranHeader) {
+                const reportSectionDiv = lampiranHeader.parentElement;
+                reportSectionDiv.style.borderBottom = 'none'; // Remove line from image section
+
+                const imageWrappers = reportSectionDiv.querySelectorAll('div.relative');
+                imageWrappers.forEach(wrapper => {
+                    // Force consistent sizing and ratio (approx. 6x5)
+                    wrapper.style.paddingTop = '0'; 
+                    wrapper.style.width = '227px';
+                    wrapper.style.height = '189px';
+                    wrapper.style.margin = 'auto';
+                });
+                
+                const imagesInClone = reportSectionDiv.querySelectorAll('img');
+                imagesInClone.forEach(img => {
+                    img.style.border = '2px solid black'; // Add black border
+                });
+            }
+
+            // Prepare clone for rendering
+            clone.style.position = 'absolute';
+            clone.style.left = '-9999px';
+            clone.style.top = '0';
+            clone.style.width = '1050px'; // Fixed width for high-quality capture
+            document.body.appendChild(clone);
+            await new Promise(res => setTimeout(res, 50));
+
+            const canvas = await html2canvas(clone, {
+              scale: 1.5, // Reduced scale for smaller canvas size
+              useCORS: true,
+              width: clone.offsetWidth,
+              height: clone.offsetHeight,
+              windowWidth: clone.scrollWidth,
+              windowHeight: clone.scrollHeight,
+            });
+            
+            document.body.removeChild(clone);
+
+            // Use JPEG for better compression and smaller file size
+            const imgData = canvas.toDataURL('image/jpeg', 0.8);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const usableWidth = pdfWidth - margin * 2;
+            const usableHeight = pdfHeight - margin * 2;
+            
+            const canvasRatio = canvas.height / canvas.width;
+            
+            let finalImgWidth, finalImgHeight;
+
+            // Fit the image within the usable page area while maintaining aspect ratio
+            if (canvas.width / usableWidth > canvas.height / usableHeight) {
+                finalImgWidth = usableWidth;
+                finalImgHeight = finalImgWidth * canvasRatio;
+            } else {
+                finalImgHeight = usableHeight;
+                finalImgWidth = finalImgHeight / canvasRatio;
+            }
+
+            // Center the image on the page
+            const x = margin + (usableWidth - finalImgWidth) / 2;
+            const y = margin + (usableHeight - finalImgHeight) / 2;
+
+            pdf.addImage(imgData, 'JPEG', x, y, finalImgWidth, finalImgHeight);
+            return pdf;
+          };
+
+          if (isIOS) {
+            const newTab = window.open('', '_blank');
+            if (!newTab) return alert(t('allowPopups'));
+            newTab.document.write(t('generatingPdf'));
+            
+            setTimeout(async () => {
+              try {
+                const pdf = await generatePdfContent();
+                newTab.location.href = pdf.output('dataurlstring');
+              } catch (err) {
+                console.error("PDF Generation Error (iOS):", err);
+                newTab.document.write(t('pdfFailCloseWindow'));
+                alert(t('pdfFailTryAgain'));
+              }
+            }, 100);
+            return;
+          }
+
+          try {
+            const pdf = await generatePdfContent();
+            const blob = pdf.output('blob');
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          } catch (err) {
+            console.error("PDF Generation Error (Desktop/Android):", err);
+            alert(t('pdfFailTryAgain'));
+          }
+        };
+
+        return (
+          <div className="font-sans text-slate-800">
+            <Header t={t} language={language} setLanguage={setLanguage} />
+            <main className="container mx-auto p-4 lg:p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="no-print">
+                   <ThemeSelector activeTheme={activeTheme} setActiveTheme={setActiveTheme} t={t} language={language} />
+                   <ReportForm 
+                     reportData={reportData} 
+                     setReportData={setReportData} 
+                     images={images} 
+                     handleImageChange={handleImageChange}
+                     imageLoading={imageLoading}
+                     t={t}
+                   />
+                </div>
+                <div>
+                  <ReportPreview 
+                    reportData={reportData} 
+                    images={images} 
+                    handleDownloadPdf={handleDownloadPdf}
+                    activeTheme={activeTheme} 
+                    t={t}
+                  />
+                </div>
+              </div>
+            </main>
+            <Footer t={t} />
+          </div>
+        );
+      };
+
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+
+    </script>
+</body>
+</html>
