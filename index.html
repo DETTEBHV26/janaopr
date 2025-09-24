@@ -65,6 +65,7 @@
         }
       }
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gradient-to-br from-cyan-50 to-blue-100">
     <div id="root"></div>
@@ -119,6 +120,10 @@
             preparedByPlaceholder: 'Nama Penuh Huruf Besar',
             preparerPosition: 'Jawatan Penyedia',
             preparerPositionPlaceholder: 'cth: Guru Penasihat',
+            reviewedBy: 'Disemak oleh (Nama)',
+            reviewedByPlaceholder: 'Nama Penuh Huruf Besar',
+            reviewerPosition: 'Jawatan Penyemak',
+            reviewerPositionPlaceholder: 'cth: Penolong Kanan Pentadbiran',
             verifiedBy: 'Disahkan oleh (Nama)',
             verifiedByPlaceholder: 'Nama Penuh Huruf Besar',
             verifierPosition: 'Jawatan Pengesah',
@@ -129,6 +134,7 @@
             noInfo: 'Tiada maklumat',
             noImages: 'Tiada gambar dimuat naik',
             preparedByLabel: 'Disediakan oleh,',
+            reviewedByLabel: 'Disemak oleh,',
             verifiedByLabel: 'Disahkan oleh,',
             downloadPdf: 'Muat Turun PDF',
             printReport: 'Cetak Laporan',
@@ -188,6 +194,10 @@
             preparedByPlaceholder: 'Full Name in Uppercase',
             preparerPosition: "Preparer's Position",
             preparerPositionPlaceholder: 'e.g., Advisor Teacher',
+            reviewedBy: 'Reviewed by (Name)',
+            reviewedByPlaceholder: 'Full Name in Uppercase',
+            reviewerPosition: "Reviewer's Position",
+            reviewerPositionPlaceholder: 'e.g., Senior Assistant for Administration',
             verifiedBy: 'Verified by (Name)',
             verifiedByPlaceholder: 'Full Name in Uppercase',
             verifierPosition: "Verifier's Position",
@@ -198,6 +208,7 @@
             noInfo: 'No information',
             noImages: 'No images uploaded',
             preparedByLabel: 'Prepared by,',
+            reviewedByLabel: 'Reviewed by,',
             verifiedByLabel: 'Verified by,',
             downloadPdf: 'Download PDF',
             printReport: 'Print Report',
@@ -424,6 +435,8 @@
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <InputField label={t('preparedBy')} name="disediakanOleh" value={reportData.disediakanOleh} onChange={handleChange} placeholder={t('preparedByPlaceholder')}/>
                   <InputField label={t('preparerPosition')} name="jawatanPenyedia" value={reportData.jawatanPenyedia} onChange={handleChange} placeholder={t('preparerPositionPlaceholder')}/>
+                  <InputField label={t('reviewedBy')} name="disemakOleh" value={reportData.disemakOleh} onChange={handleChange} placeholder={t('reviewedByPlaceholder')}/>
+                  <InputField label={t('reviewerPosition')} name="jawatanPenyemak" value={reportData.jawatanPenyemak} onChange={handleChange} placeholder={t('reviewerPositionPlaceholder')}/>
                   <InputField label={t('verifiedBy')} name="disahkanOleh" value={reportData.disahkanOleh} onChange={handleChange} placeholder={t('verifiedByPlaceholder')}/>
                   <InputField label={t('verifierPosition')} name="jawatanPengesah" value={reportData.jawatanPengesah} onChange={handleChange} placeholder={t('verifierPositionPlaceholder')}/>
               </div>
@@ -522,12 +535,18 @@
                 </ReportSection>
               </main>
 
-              <footer className="mt-12 grid grid-cols-2 gap-8 text-sm">
+              <footer className="mt-12 grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <p>{t('preparedByLabel')}</p>
                   <div className="h-20"></div>
                   <p className={`font-bold mt-1 border-t pt-1 ${theme.signatureLineClass}`}>({reportData.disediakanOleh || ' '.repeat(30)})</p>
                   <p>{reportData.jawatanPenyedia}</p>
+                </div>
+                <div>
+                  <p>{t('reviewedByLabel')}</p>
+                  <div className="h-20"></div>
+                  <p className={`font-bold mt-1 border-t pt-1 ${theme.signatureLineClass}`}>({reportData.disemakOleh || ' '.repeat(30)})</p>
+                  <p>{reportData.jawatanPenyemak}</p>
                 </div>
                 <div>
                   <p>{t('verifiedByLabel')}</p>
@@ -576,8 +595,10 @@
           kelemahan: '1. Tempoh masa bagi setiap slot agak terhad.\n2. Masalah teknikal pada sistem siaraya di awal program.',
           penambahbaikan: '1. Memanjangkan tempoh program pada masa akan datang.\n2. Membuat pemeriksaan teknikal lebih awal sebelum program bermula.',
           disediakanOleh: 'PN. SITI AISHAH BINTI AHMAD',
-          disahkanOleh: 'EN. ISMAIL BIN JUSOH',
+          disemakOleh: 'PN. NORMAH BINTI ABDULLAH',
+          disahkanOleh: 'MOHD MASNI BIN HAJI NANUN',
           jawatanPenyedia: 'Guru Penasihat',
+          jawatanPenyemak: 'Penolong Kanan Pentadbiran',
           jawatanPengesah: 'Guru Besar, SK Inanam II',
         });
         
@@ -778,5 +799,6 @@
       root.render(<App />);
 
     </script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
